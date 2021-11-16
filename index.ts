@@ -43,96 +43,103 @@ class FreeholdSigner {
   }
 }
 
-function generateAesGcmIv() {
-  // Notice here that we're creating a 12-byte random
-  // initialization vector. AES-GCM doesn't require the
-  // IV to be random, only that it be unique. Using a
-  // random value does increase the incidence of the 
-  // birthday problem, although it is very rare. 
-  // Because we're using a random value as the IV,
-  // this library is limited to ecrypting about
-  // 4 billion messages before becoming unsafe. 
-  // 
-  // Note that encrypting any two messages with the same
-  // IV and the same key could cause the key to be exposed.
-  // More discussion at the following links: 
-  // 
-  // https://crypto.stackexchange.com/questions/58329/can-aes-gcm-be-broken-if-initialisation-vector-is-known
-  // https://developer.mozilla.org/en-US/docs/Web/API/AesGcmParams
+async function __createSignerObject(secretKey:string) {         
+  // Structure of this encryption is a mixture of the following two resources: 
+  // https://gist.github.com/chrisveness/43bcda93af9f646d083fad678071b90a
+  // https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/deriveKey#pbkdf2_2
 
-  return crypto.getRandomValues(new Uint8Array(12));
-}
+  let enc = new TextEncoder();
 
-// Define a very small scope that holds the full secretKey
-async function __createSignerObject(secretKey:string) {
+  let seed = Buffer.concat([
+    enc.encode(secretKey),
+    //crypto.getRandomValues(new Uint8Array(16))
+  ]) 
 
-  // Hash the secret key immediately, and remove the raw version.
-  const secretHash = await crypto.subtle.digest(
-    'SHA-256', 
-    new TextEncoder().encode(secretKey)
-  );         
+  let masterKey = await crypto.subtle.importKey(
+    "raw",
+    seed,
+    "PBKDF2",
+    false,
+    ["deriveBits", "deriveKey"]
+  ) 
 
   // Just for good measure. Keep the raw data out of scope.
   secretKey = undefined;
 
-  // Structure of this encryption scheme taken from here: 
-  // https://gist.github.com/chrisveness/43bcda93af9f646d083fad678071b90a
-
-  let enc = new TextEncoder();
-
   return new FreeholdSigner(
     async (plaintext:string) => {
       // Generate a random 96-bit IV for use in encryption/decryption
-      // See comments in generateAesGcmIv() function for security implications.
-      const iv = generateAesGcmIv()                             
-      const algorithm = { name: 'AES-GCM', iv: iv };      
-      
-      // Create a crypto key based on the secret passed in
-      const key = await crypto.subtle.importKey(
-        'raw', 
-        secretHash, 
-        algorithm, 
-        false, 
-        ['encrypt']
-      ); 
+      // and a 128-bit salt. 
+      const iv = crypto.getRandomValues(new Uint8Array(12));                            
+      const salt = crypto.getRandomValues(new Uint8Array(16));  
 
-      // Encode the string and encrypt it using the 
-      const ptUint8 = new TextEncoder().encode(plaintext);                               
-      const ct = await crypto.subtle.encrypt(algorithm, key, ptUint8);                  
+      // Create a PBKDF2 key based on the salt and the master key
+      let key = await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: 100000,
+          hash: "SHA-256"
+        },
+        masterKey,
+        {name: "AES-GCM", length: 256},
+        false,
+        ["encrypt"]
+      )
+
+      // Encrypt the plaintext via AES using the key and the iv
+      const ct = await crypto.subtle.encrypt(
+        {
+          name: "AES-GCM",
+          iv: iv
+        },
+        key,
+        enc.encode(plaintext)
+      )
 
       // Convert result to buffer
       const ctBuffer = Buffer.from(ct);                             
      
-      // Return a base64 encoded string that includes both the iv as well
-      // as the cipher text. This makes the data easy to store and pass around.
+      // Return a base64url encoded string that includes both the iv, salt, and
+      // cipher text. This makes the data easy to store and pass around.
       return Buffer.concat([
         iv,
+        salt,
         ctBuffer
-      ]).toString("base64");
+      ]).toString("base64url");
     },
     async (cipherText:string) => {
-      // Convert from base64 to buffer
-      const data = Buffer.from(cipherText, "base64");
+      // Convert from base64url to buffer
+      const data = Buffer.from(cipherText, "base64url");
 
-      // The first 12 bytes are the IV
+      // Grab the iv and salt from the beginning of the data buffer
       const iv = data.subarray(0, 12);  
+      const salt = data.subarray(12, 28);                          
 
-      // Recreate the crypto key based on secret passed in
-      const algorithm = { name: 'AES-GCM', iv: iv };                                           
-      const key = await crypto.subtle.importKey(
-        'raw', 
-        secretHash,
-        algorithm, 
-        false, 
-        ['decrypt']
-      ); 
+      // Recreate the deterministic key from the salt and the master key
+      let key = await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: 100000,
+          hash: "SHA-256"
+        },
+        masterKey,
+        {name: "AES-GCM", length: 256},
+        false,
+        ["decrypt"]
+      )
   
       // Get the remaining bytes of the cipher text as the encrypted data
-      const ct = data.subarray(12);
+      const ciphertext = data.subarray(28);
 
       try {
         // Decrypt the cipher text using the key.
-        const plainBuffer = await crypto.subtle.decrypt(algorithm, key, ct);
+        const plainBuffer = await crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv: iv },
+          key,
+          ciphertext
+        )
         
         // And convert back to string.
         return new TextDecoder().decode(plainBuffer);                                                                                   

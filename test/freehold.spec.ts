@@ -34,6 +34,8 @@ describe("Freehold", () => {
       expect(cipherText).not.toBe(message);
   
       let decrypted = await freeholdSigner.decrypt(cipherText);
+
+      console.log(cipherText);
   
       // Make sure we get the message back when decrypting the ciphertext
       expect(decrypted).toBe(message);
@@ -107,7 +109,7 @@ describe("Freehold", () => {
       );
   
       let message = "";
-      
+
       let cipherText = await freeholdSigner.encrypt(message);
       let decrypted = await freeholdSigner.decrypt(cipherText);
   
