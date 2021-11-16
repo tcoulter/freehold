@@ -1,9 +1,11 @@
 {
   "name": "freehold",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "App data encryption for web3",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "prepublish": "npx tsc",
     "test": "ts-mocha -p ./tsconfig.json ./test/**/*.spec.ts"
   },
   "keywords": [
