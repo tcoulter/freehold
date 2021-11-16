@@ -6,7 +6,7 @@
 >  
 >  : permanent and absolute tenure of land or property with freedom to dispose of it at will.
 
-Freehold is a library to help users gain freehold of their data, using in-browser cryptography coupled with the power of popular crpyto wallets. 
+Freehold is a library to help users gain freehold of their data, using in-browser cryptography coupled with the power of popular crypto wallets. 
 
 ### Install
 
