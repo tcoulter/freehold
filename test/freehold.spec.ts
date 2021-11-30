@@ -21,11 +21,11 @@ describe("Freehold", () => {
 
   describe("encryption/decryption", () => {
     it("encrypts data and can decrypt it", async () => {
-      let freeholdSigner = await freehold(
+      let freeholdSigner = await freehold({
         provider,
-        await signer.getAddress(), 
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(), 
+        password: "Super secret password!!!"
+      });
   
       let message = "Hello from freehold!";
       let cipherText = await freeholdSigner.encrypt(message);
@@ -42,20 +42,20 @@ describe("Freehold", () => {
     });
   
     it("decrypts data correctly when decrypting data from a different signer instance (think, different sessions)", async () => {
-      let freeholdSigner = await freehold(
+      let freeholdSigner = await freehold({
         provider,
-        await signer.getAddress(), 
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(), 
+        password: "Super secret password!!!"
+      });
   
       let message = "Hello from freehold!";
       let cipherText = await freeholdSigner.encrypt(message);
   
-      let newFreeholdSigner = await freehold(
+      let newFreeholdSigner = await freehold({
         provider,
-        await signer.getAddress(),
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(),
+        password: "Super secret password!!!"
+      });
   
       let decrypted = await newFreeholdSigner.decrypt(cipherText);
   
@@ -65,11 +65,11 @@ describe("Freehold", () => {
     })
   
     it("encrypts the same message differently a second time", async () => {
-      let freeholdSigner = await freehold(
+      let freeholdSigner = await freehold({
         provider,
-        await signer.getAddress(), 
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(), 
+        password: "Super secret password!!!"
+      });
   
       let message = "Hello from freehold!";
       let firstCipherText = await freeholdSigner.encrypt(message);
@@ -79,17 +79,17 @@ describe("Freehold", () => {
     })
   
     it("encrypts the same message differently using a different signer", async () => {
-      let firstFreeholdSigner = await freehold(
+      let firstFreeholdSigner = await freehold({
         provider,
-        await signer.getAddress(), 
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(), 
+        password: "Super secret password!!!"
+      });
   
-      let secondFreeholdSigner = await freehold(
+      let secondFreeholdSigner = await freehold({
         provider,
-        await signer.getAddress(), 
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(), 
+        password: "Super secret password!!!"
+      });
   
       let message = "Hello from freehold!";
       let firstCipherText = await firstFreeholdSigner.encrypt(message);
@@ -102,11 +102,11 @@ describe("Freehold", () => {
   describe("edge cases", () => {
 
     it("successfully encrypts and decrypts the empty string", async () => {
-      let freeholdSigner = await freehold(
+      let freeholdSigner = await freehold({
         provider,
-        await signer.getAddress(), 
-        freeholdSignatureParams
-      );
+        address: await signer.getAddress(), 
+        password: "Super secret password!!!"
+      });
   
       let message = "";
 
